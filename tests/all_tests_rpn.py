@@ -1,5 +1,7 @@
 import unittest
-from rpn import rpn_calculator, parse_str_postfix, parse_str_infix
+from math import isclose
+
+from main import rpn_calculator, parse_str_postfix, parse_str_infix
 
 
 class TestPush(unittest.TestCase):
@@ -34,7 +36,8 @@ class TestPush(unittest.TestCase):
 
     def test_nonnum_push(self):
         program = " рофель "
-        self.assertRaises(ValueError, parse_str_postfix, program)
+        program = parse_str_postfix(program)
+        self.assertRaises(ValueError, rpn_calculator, program)
 
 
 class TestAddition(unittest.TestCase):
@@ -273,3 +276,43 @@ class TestInfixPrograms(unittest.TestCase):
         program = parse_str_infix(str_program)
         result = rpn_calculator(program)
         self.assertEqual(result, eval(str_program), "InfixProgram-test №3 didn't pass")
+
+
+class TestUnaryAndFloatOperations(unittest.TestCase):
+
+    def test_unary_neg(self):
+        expr = parse_str_postfix("5 neg")
+        self.assertEqual(rpn_calculator(expr), -5.0)
+
+    def test_sqrt_positive(self):
+        expr = parse_str_postfix("9 sqrt")
+        self.assertEqual(rpn_calculator(expr), 3.0)
+
+    def test_sqrt_negative(self):
+        expr = parse_str_postfix("-4 sqrt")
+        with self.assertRaises(ValueError):
+            rpn_calculator(expr)
+
+    def test_sin(self):
+        expr = parse_str_postfix("3.14159265 sin")
+        result = rpn_calculator(expr)
+        self.assertTrue(isclose(result, 0.0, abs_tol=1e-6))
+
+    def test_cos(self):
+        expr = parse_str_postfix("0 cos")
+        result = rpn_calculator(expr)
+        self.assertTrue(isclose(result, 1.0, abs_tol=1e-6))
+
+    def test_tan(self):
+        expr = parse_str_postfix("0 tan")
+        result = rpn_calculator(expr)
+        self.assertTrue(isclose(result, 0.0, abs_tol=1e-6))
+
+    def test_float_operations(self):
+        expr = parse_str_postfix("2.5 3.1 +")
+        result = rpn_calculator(expr)
+        self.assertTrue(isclose(result, 5.6, abs_tol=1e-6))
+
+
+if __name__ == "__main__":
+    unittest.main()
