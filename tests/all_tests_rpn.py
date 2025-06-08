@@ -1,7 +1,7 @@
 import unittest
 from math import isclose
 
-from main import rpn_calculator, parse_str_postfix, parse_str_infix
+from main import rpn_calculator, parse_str_postfix, parse_str_infix, evaluate_program
 
 
 class TestPush(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestPush(unittest.TestCase):
         program = parse_str_postfix(program)
         self.assertRaises(ValueError, rpn_calculator, program)
 
-    def test_nonnum_push(self):
+    def test_not_num_push(self):
         program = " рофель "
         program = parse_str_postfix(program)
         self.assertRaises(ValueError, rpn_calculator, program)
@@ -312,6 +312,103 @@ class TestUnaryAndFloatOperations(unittest.TestCase):
         expr = parse_str_postfix("2.5 3.1 +")
         result = rpn_calculator(expr)
         self.assertTrue(isclose(result, 5.6, abs_tol=1e-6))
+
+
+class TestRPNWithVariables(unittest.TestCase):
+
+    def test_addition_with_vars(self):
+        expr = "x y +"
+        vars = {"x": 5, "y": 7}
+        self.assertEqual(rpn_calculator(expr, vars), 12)
+
+    def test_complex_expression(self):
+        expr = "a b + c * d neg +"
+        vars = {"a": 2, "b": 3, "c": 4, "d": 6}
+        self.assertEqual(rpn_calculator(expr, vars), 14)
+
+    def test_float_and_int_mix(self):
+        expr = "a b *"
+        vars = {"a": 2.5, "b": 4}
+        self.assertAlmostEqual(rpn_calculator(expr, vars), 10.0)
+
+    def test_missing_variable(self):
+        expr = "x y +"
+        vars = {"x": 1}
+        with self.assertRaises(ValueError):
+            rpn_calculator(expr, vars)
+
+    def test_with_unary_functions(self):
+        expr = "x sqrt"
+        vars = {"x": 9}
+        self.assertEqual(rpn_calculator(expr, vars), 3.0)
+
+    def test_with_trigonometric(self):
+        expr = "x sin"
+        vars = {"x": 0}
+        self.assertEqual(rpn_calculator(expr, vars), 0.0)
+
+    def test_infix_with_vars(self):
+        infix = "a + b * 2 + neg a"
+        rpn = parse_str_infix(infix)
+        result = rpn_calculator(rpn, {"a": 3, "b": 4})
+        self.assertEqual(result, 8)
+
+
+class TestRPNAssignment(unittest.TestCase):
+
+    def test_single_assignment(self):
+        lines = ["x = 2 3 +"]
+        result = evaluate_program(lines)
+        self.assertEqual(result["x"], 5)
+
+    def test_multiple_assignments(self):
+        lines = [
+            "a = 4",
+            "b = 5",
+            "c = a b +"
+        ]
+        result = evaluate_program(lines)
+        self.assertEqual(result, {"a": 4, "b": 5, "c": 9})
+
+    def test_infix_assignment(self):
+        lines = ["x = 3 + 4 * 2"]
+        result = evaluate_program(lines)
+        self.assertEqual(result["x"], 11)
+
+    def test_combination_postfix_and_infix(self):
+        lines = [
+            "x = 3",
+            "y = x 2 +",
+            "z = y * 2 + 1"
+        ]
+        result = evaluate_program(lines)
+        self.assertEqual(result["z"], 11)
+
+    def test_just_expression(self):
+        lines = [
+            "a = 4",
+            "b = 2",
+            "a b +"
+        ]
+        result = evaluate_program(lines)
+        self.assertEqual(result["a"], 4)
+        self.assertEqual(result["b"], 2)
+
+    def test_invalid_variable_name(self):
+        lines = ["1a = 5"]
+        with self.assertRaises(ValueError):
+            evaluate_program(lines)
+
+    def test_empty_and_whitespace_lines(self):
+        lines = [
+            "    ",
+            "x = 2 2 +",
+            "   ",
+            "y = x 2 *"
+        ]
+        result = evaluate_program(lines)
+        self.assertEqual(result["x"], 4)
+        self.assertEqual(result["y"], 8)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import re
 
 class Stack:
     """ Реализация Stack для удобства """
+
     def __init__(self):
         self.data = []
 
@@ -23,12 +24,16 @@ class Stack:
         return len(self.data)
 
 
+def is_infix(expr: str) -> bool:
+    return bool(re.search(r'[+\-*/^%()]', expr))
+
+
 def parse_str_postfix(s: str) -> str:
     """ Чистка строки от лишних пробелов """
     return " ".join(s.strip().split())
 
 
-def parse_str_infix(s: str) -> str:
+def parse_str_infix(ex: str) -> str:
     """ Преобразование инфиксного выражения в обратную польскую нотацию (алгоритм сортировочной станции) """
     OPERATORS = {
         '+': (1, 'L'),
@@ -40,13 +45,13 @@ def parse_str_infix(s: str) -> str:
     }
     FUNCTIONS = {"neg", "sqrt", "sin", "cos", "tan"}
 
-    def tokenize(expr):
-        expr = expr.replace('//', ' // ')
-        return re.findall(r'\d+\.\d+|\d+|[a-zA-Z_]+|//|%|[+\-*/^()]', expr)
+    def tokenize(expression):
+        expression = expression.replace('//', ' // ')
+        return re.findall(r'\d+\.\d+|\d+|[a-zA-Z_]+|//|%|[+\-*/^()]', expression)
 
     output = []
     stack = []
-    tokens = tokenize(s)
+    tokens = tokenize(ex)
 
     for token in tokens:
         if re.fullmatch(r'\d+\.\d+|\d+', token):
@@ -73,7 +78,7 @@ def parse_str_infix(s: str) -> str:
             if stack and stack[-1] in FUNCTIONS:
                 output.append(stack.pop())
         else:
-            raise ValueError(f"Неизвестный токен: {token}")
+            output.append(token)
 
     while stack:
         if stack[-1] in {'(', ')'}:
@@ -83,9 +88,10 @@ def parse_str_infix(s: str) -> str:
     return ' '.join(output)
 
 
-def rpn_calculator(ex: str):
+def rpn_calculator(ex: str, vars: dict[str, float] = None):
     """ RPN калькулятор с вычислением через Stack """
     stack = Stack()
+
     for token in ex.split():
         if token in {"+", "-", "*", "//", "%", "^"}:
 
@@ -140,10 +146,40 @@ def rpn_calculator(ex: str):
             try:
                 stack.push(float(token))
             except ValueError:
-                raise ValueError(f"\"{token}\" - неизвестная операция или не число")
+                if vars is not None and token in vars:
+                    stack.push(vars[token])
+                else:
+                    raise ValueError(f"\"{token}\" - неизвестная операция или не число")
 
     if stack.size() != 1:
-        raise ValueError(f"К концу вычислений на стеке оказалось не одно число: {stack.data}")
+        raise ValueError(f"Некорректный итоговый стек: {stack.data}")
 
     result = stack.pop()
     return int(result) if result.is_integer() else result
+
+
+def evaluate_program(lines: list[str]) -> dict[str, float]:
+    """
+    Обрабатывает список строк-программ, поддерживает:
+    - присваивания: a = 2 3 +
+    - вычисления: 4 5 *
+    Возвращает финальное состояние переменных.
+    """
+    env = {}
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        if '=' in line:
+            varname, expr = map(str.strip, line.split('=', 1))
+            if not varname.isidentifier():
+                raise ValueError(f"Недопустимое имя переменной: {varname}")
+
+            expr_rpn = parse_str_infix(expr) if is_infix(expr) else parse_str_postfix(expr)
+            env[varname] = rpn_calculator(expr_rpn, env)
+        else:
+            expr_rpn = parse_str_infix(line) if is_infix(line) else parse_str_postfix(line)
+            rpn_calculator(expr_rpn, env)
+
+    return env
