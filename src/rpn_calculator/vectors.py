@@ -40,7 +40,8 @@ def vector_angle(a: Vector, b: Vector) -> float:
     mag_b = vector_abs(b)
     if mag_a == 0 or mag_b == 0:
         raise ValueError("Невозможно вычислить угол с нулевым вектором")
-    return math.acos(dot / (mag_a * mag_b))  # в радианах
+    cos_theta = max(-1.0, min(1.0, dot / (mag_a * mag_b)))
+    return math.acos(cos_theta)
 
 
 def vector_scalar_mul(v: Vector, s: float) -> Vector:
@@ -48,6 +49,9 @@ def vector_scalar_mul(v: Vector, s: float) -> Vector:
 
 
 def parse_vector(token: str) -> Union[float, Vector]:
+    token = token.strip()
     if token.startswith("[") and token.endswith("]"):
+        if len(token) == 2:
+            return []
         return [float(x) for x in token[1:-1].split(",")]
     return float(token)

@@ -1,11 +1,11 @@
 import unittest
 from math import isclose, pi, sqrt
 
-from main import rpn_calculator, parse_str_postfix, parse_str_infix, evaluate_program
+from src.rpn_calculator.calculator import rpn_calculator, evaluate_program
+from src.rpn_calculator.parser import parse_str_postfix, parse_str_infix
 
 
 class TestPush(unittest.TestCase):
-
     def test_positive(self):
         program = "42"
         program = parse_str_postfix(program)
@@ -35,13 +35,12 @@ class TestPush(unittest.TestCase):
         self.assertRaises(ValueError, rpn_calculator, program)
 
     def test_not_num_push(self):
-        program = " рофель "
+        program = "рофель"
         program = parse_str_postfix(program)
         self.assertRaises(ValueError, rpn_calculator, program)
 
 
 class TestAddition(unittest.TestCase):
-
     def test_add_positives(self):
         str_program = "27 42 +"
         program = parse_str_postfix(str_program)
@@ -84,7 +83,6 @@ class TestAddition(unittest.TestCase):
 
 
 class TestSubtraction(unittest.TestCase):
-
     def test_sub_positives(self):
         str_program = "69 27 -"
         program = parse_str_postfix(str_program)
@@ -127,7 +125,6 @@ class TestSubtraction(unittest.TestCase):
 
 
 class TestMultiplication(unittest.TestCase):
-
     def test_mul_positives(self):
         str_program = "23 3 *"
         program = parse_str_postfix(str_program)
@@ -170,7 +167,6 @@ class TestMultiplication(unittest.TestCase):
 
 
 class TestDivision(unittest.TestCase):
-
     def test_div_positives(self):
         str_program = "207 3 //"
         program = parse_str_postfix(str_program)
@@ -213,7 +209,6 @@ class TestDivision(unittest.TestCase):
 
 
 class TestPrograms(unittest.TestCase):
-
     def test_1(self):
         str_program = "7 2 3 * -"
         program = parse_str_postfix(str_program)
@@ -227,31 +222,26 @@ class TestPrograms(unittest.TestCase):
         self.assertEqual(result, 15, "Program-test №2 didn't pass")
 
     def test_complex(self):
-        str_program = "3 6 3 * 1 4 - 2 ^ // +"
-        program = parse_str_postfix(str_program)
+        str_program = "3 + 18 // ( (1-4)^2 )"
+        program = parse_str_infix(str_program)
         result = rpn_calculator(program)
         self.assertEqual(result, 5, "Program-test complex didn't pass")
 
     def test_similar(self):
-        str_program = "10 15 - 3 *"
-        program = parse_str_postfix(str_program)
-        result1 = rpn_calculator(program)
-
-        str_program = "3 10 15 - *"
-        program = parse_str_postfix(str_program)
-        result2 = rpn_calculator(program)
-
+        program1 = parse_str_postfix("10 15 - 3 *")
+        result1 = rpn_calculator(program1)
+        program2 = parse_str_postfix("3 10 15 - *")
+        result2 = rpn_calculator(program2)
         self.assertEqual(result1, result2, "Results of similar programs are not equal")
         self.assertEqual(result1, -15, "test_similar() calculations are invalid")
 
 
 class TestInfixPrograms(unittest.TestCase):
-
     def test_no_space(self):
         str_program = "3+6*(3-2)"
         program = parse_str_infix(str_program)
         result = rpn_calculator(program)
-        self.assertEqual(result, eval(str_program), "InfixProgram-no-space didn't pass")
+        self.assertEqual(result, 9, "InfixProgram-no-space didn't pass")
 
     def test_with_space(self):
         str_program = "5 * 3 + 2 ^ 4 % 5"
@@ -269,20 +259,19 @@ class TestInfixPrograms(unittest.TestCase):
         str_program = "36 // 12"
         program = parse_str_infix(str_program)
         result = rpn_calculator(program)
-        self.assertEqual(result, eval(str_program), "InfixProgram-test №2 didn't pass")
+        self.assertEqual(result, 3, "InfixProgram-test №2 didn't pass")
 
     def test_3(self):
         str_program = "5 * 3 // (6 - 1)"
         program = parse_str_infix(str_program)
         result = rpn_calculator(program)
-        self.assertEqual(result, eval(str_program), "InfixProgram-test №3 didn't pass")
+        self.assertEqual(result, 3, "InfixProgram-test №3 didn't pass")
 
 
 class TestUnaryAndFloatOperations(unittest.TestCase):
-
     def test_unary_neg(self):
-        expr = parse_str_postfix("5 neg")
-        self.assertEqual(rpn_calculator(expr), -5.0)
+        expr = parse_str_infix("neg(5)")
+        self.assertEqual(rpn_calculator(expr), -5)
 
     def test_sqrt_positive(self):
         expr = parse_str_postfix("9 sqrt")
@@ -315,7 +304,6 @@ class TestUnaryAndFloatOperations(unittest.TestCase):
 
 
 class TestRPNWithVariables(unittest.TestCase):
-
     def test_addition_with_vars(self):
         expr = "x y +"
         vars = {"x": 5, "y": 7}
@@ -323,8 +311,8 @@ class TestRPNWithVariables(unittest.TestCase):
 
     def test_complex_expression(self):
         expr = "a b + c * d neg +"
-        vars = {"a": 2, "b": 3, "c": 4, "d": 6}
-        self.assertEqual(rpn_calculator(expr, vars), 14)
+        vars_dict = {"a": 2, "b": 3, "c": 4, "d": 6}
+        self.assertEqual(rpn_calculator(expr, vars_dict), 14)
 
     def test_float_and_int_mix(self):
         expr = "a b *"
@@ -355,20 +343,17 @@ class TestRPNWithVariables(unittest.TestCase):
 
 
 class TestRPNAssignment(unittest.TestCase):
-
     def test_single_assignment(self):
         lines = ["x = 2 3 +"]
         result = evaluate_program(lines)
         self.assertEqual(result["x"], 5)
 
     def test_multiple_assignments(self):
-        lines = [
-            "a = 4",
-            "b = 5",
-            "c = a b +"
-        ]
+        lines = ["a = 4", "b = 5", "c = a b +"]
         result = evaluate_program(lines)
-        self.assertEqual(result, {"a": 4, "b": 5, "c": 9})
+        self.assertEqual(result.get("a"), 4)
+        self.assertEqual(result.get("b"), 5)
+        self.assertEqual(result.get("c"), 9)
 
     def test_infix_assignment(self):
         lines = ["x = 3 + 4 * 2"]
@@ -376,23 +361,17 @@ class TestRPNAssignment(unittest.TestCase):
         self.assertEqual(result["x"], 11)
 
     def test_combination_postfix_and_infix(self):
-        lines = [
-            "x = 3",
-            "y = x 2 +",
-            "z = y * 2 + 1"
-        ]
+        lines = ["x = 3", "y = x 2 +", "z = y * 2 + 1"]
         result = evaluate_program(lines)
         self.assertEqual(result["z"], 11)
 
     def test_just_expression(self):
-        lines = [
-            "a = 4",
-            "b = 2",
-            "a b +"
-        ]
+        lines = ["a = 4", "b = 2", "a b +"]
         result = evaluate_program(lines)
         self.assertEqual(result["a"], 4)
         self.assertEqual(result["b"], 2)
+        self.assertIn("_last", result)
+        self.assertEqual(result["_last"], 6)
 
     def test_invalid_variable_name(self):
         lines = ["1a = 5"]
@@ -400,19 +379,13 @@ class TestRPNAssignment(unittest.TestCase):
             evaluate_program(lines)
 
     def test_empty_and_whitespace_lines(self):
-        lines = [
-            "    ",
-            "x = 2 2 +",
-            "   ",
-            "y = x 2 *"
-        ]
+        lines = ["    ", "x = 2 2 +", "   ", "y = x 2 *"]
         result = evaluate_program(lines)
         self.assertEqual(result["x"], 4)
         self.assertEqual(result["y"], 8)
 
 
 class TestRPNVectorOperations(unittest.TestCase):
-
     def test_vector_addition(self):
         self.assertEqual(rpn_calculator("[1,2,3] [4,5,6] +"), [5, 7, 9])
 
@@ -435,14 +408,10 @@ class TestRPNVectorOperations(unittest.TestCase):
         self.assertTrue(isclose(result, pi / 2, abs_tol=1e-6))
 
     def test_mixed_vector_scalar_operations(self):
-        with self.assertRaises(TypeError):
-            rpn_calculator("[1,2] 2 +")
-        with self.assertRaises(TypeError):
-            rpn_calculator("2 [1,2] +")
-        with self.assertRaises(TypeError):
-            rpn_calculator("[1,2] 3 -")
-        with self.assertRaises(TypeError):
-            rpn_calculator("3 [1,2] -")
+        with self.assertRaises(TypeError): rpn_calculator("[1,2] 2 +")
+        with self.assertRaises(TypeError): rpn_calculator("2 [1,2] +")
+        with self.assertRaises(TypeError): rpn_calculator("[1,2] 3 -")
+        with self.assertRaises(TypeError): rpn_calculator("3 [1,2] -")
 
     def test_invalid_vector_length_for_add(self):
         with self.assertRaises(ValueError):
@@ -454,20 +423,18 @@ class TestRPNVectorOperations(unittest.TestCase):
 
 
 class TestRPNMixedTypes(unittest.TestCase):
-
     def test_scalar_then_vector_operations(self):
         self.assertEqual(rpn_calculator("[1,2] neg"), [-1, -2])
 
     def test_nested_stack_behavior(self):
-        with self.assertRaises(TypeError):
-            rpn_calculator("1 2 [1,2] +")
+        with self.assertRaises(TypeError): rpn_calculator("1 2 [1,2] +")
 
     def test_vector_then_scalar_sequence(self):
         result = rpn_calculator("[1,2,2] abs 3 +")
         self.assertTrue(isclose(result, 6.0))
 
     def test_angle_with_vectors_and_scalar_ops(self):
-        angle = rpn_calculator("[1,0] [0,1] angle 1 +")  # pi/2 + 1
+        angle = rpn_calculator("[1,0] [0,1] angle 1 +")
         self.assertTrue(isclose(angle, pi / 2 + 1, abs_tol=1e-6))
 
     def test_combined_operations(self):
@@ -481,6 +448,70 @@ class TestRPNMixedTypes(unittest.TestCase):
 
     def test_vector_angle_with_self(self):
         self.assertTrue(isclose(rpn_calculator("[1,2] [1,2] angle"), 0.0, abs_tol=1e-6))
+
+
+# НОВЫЙ КЛАСС ТЕСТОВ
+class TestEdgeCasesAndErrors(unittest.TestCase):
+    def test_modulo_operator(self):
+        program = parse_str_infix("10 % 3")
+        result = rpn_calculator(program)
+        self.assertEqual(result, 1, "Modulo operator test failed")
+
+    def test_power_operator(self):
+        program = parse_str_postfix("2 10 ^")
+        result = rpn_calculator(program)
+        self.assertEqual(result, 1024, "Power operator test failed")
+
+    def test_zero_division_error(self):
+        program = parse_str_postfix("5 0 //")
+        with self.assertRaises(ZeroDivisionError, msg="Did not raise ZeroDivisionError for integer division"):
+            rpn_calculator(program)
+
+    def test_angle_with_zero_vector(self):
+        with self.assertRaises(ValueError, msg="Angle with zero vector did not raise ValueError"):
+            rpn_calculator("[1,2] [0,0] angle")
+
+    def test_variable_reassignment(self):
+        lines = ["x = 5", "y = x 2 +", "x = y"]
+        result = evaluate_program(lines)
+        self.assertEqual(result['x'], 7, "Variable reassignment failed")
+        self.assertEqual(result['y'], 7, "Variable value check after reassignment failed")
+
+    def test_using_undefined_variable(self):
+        lines = ["x = y + 2"]
+        with self.assertRaises(ValueError, msg="Using an undefined variable should raise ValueError"):
+            evaluate_program(lines)
+
+    def test_invalid_rpn_expression(self):
+        with self.assertRaises(ValueError, msg="Invalid RPN expression did not raise error"):
+            rpn_calculator("+")
+
+    def test_mismatched_parentheses_infix(self):
+        with self.assertRaises(ValueError, msg="Mismatched parentheses (opening) did not raise error"):
+            parse_str_infix("((2 + 3) * 4")
+        with self.assertRaises(ValueError, msg="Mismatched parentheses (closing) did not raise error"):
+            parse_str_infix("(2 + 3)) * 4")
+
+    def test_vector_dot_product_mismatch_length(self):
+        with self.assertRaises(ValueError, msg="Dot product of vectors with mismatched lengths should fail"):
+            rpn_calculator("[1,2] [1,2,3] angle")
+
+    def test_trig_function_on_vector(self):
+        with self.assertRaises(TypeError, msg="sin function should not be applicable to a vector"):
+            rpn_calculator("[1,2] sin")
+
+    def test_unary_minus_in_infix(self):
+        program = parse_str_infix("-3 + 4")
+        self.assertEqual(rpn_calculator(program), 1, "Unary minus at the start failed")
+        program = parse_str_infix("10 * (-2)")
+        self.assertEqual(rpn_calculator(program), -20, "Unary minus after parenthesis failed")
+        program = parse_str_infix("5 - -2")
+        self.assertEqual(rpn_calculator(program), 7, "Unary minus after operator failed")
+        program = parse_str_infix("-a * (b - -c)")
+        vars_dict = {"a": 3, "b": 10, "c": 2}
+        self.assertEqual(rpn_calculator(program, vars_dict), -36, "Complex unary minus expression failed")
+        program = parse_str_infix("--5")
+        self.assertEqual(rpn_calculator(program), 5, "Double unary minus failed")
 
 
 if __name__ == "__main__":
