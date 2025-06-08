@@ -1,6 +1,9 @@
 import math
 import re
 
+from vectors_rpn import parse_vector, vector_abs, is_vector, vector_neg, vector_angle, vector_scalar_mul, vector_sub, \
+    vector_add
+
 
 class Stack:
     """ Реализация Stack для удобства """
@@ -88,26 +91,43 @@ def parse_str_infix(ex: str) -> str:
     return ' '.join(output)
 
 
-def rpn_calculator(ex: str, vars: dict[str, float] = None):
+def rpn_calculator(ex: str, vars: dict[str, float | list[float]] = None):
     """ RPN калькулятор с вычислением через Stack """
     stack = Stack()
+    vars = vars or {}
 
     for token in ex.split():
-        if token in {"+", "-", "*", "//", "%", "^"}:
+        if token in {"+", "-", "*", "//", "%", "^", "angle"}:
 
             if stack.size() < 2:
-                raise ValueError(f"Недостаточно операндов для бинарной операции: {token}")
+                raise ValueError(f"Недостаточно операндов: {token}")
 
             b = stack.pop()
             a = stack.pop()
             result = None
 
             if token == "+":
-                result = a + b
+                if is_vector(a) and is_vector(b):
+                    result = vector_add(a, b)
+                elif not is_vector(a) and not is_vector(b):
+                    result = a + b
+                else:
+                    raise TypeError("Нельзя складывать вектор и скаляр")
+
             elif token == "-":
-                result = a - b
+                if is_vector(a) and is_vector(b):
+                    result = vector_sub(a, b)
+                elif not is_vector(a) and not is_vector(b):
+                    result = a - b
+                else:
+                    raise TypeError("Нельзя вычитать вектор и скаляр")
             elif token == "*":
-                result = a * b
+                if is_vector(a) and not is_vector(b):
+                    result = vector_scalar_mul(a, b)
+                elif not is_vector(a) and is_vector(b):
+                    result = vector_scalar_mul(b, a)
+                else:
+                    result = a * b
             elif token == "//":
                 if b == 0:
                     raise ZeroDivisionError("Деление на ноль")
@@ -116,22 +136,22 @@ def rpn_calculator(ex: str, vars: dict[str, float] = None):
                 result = a % b
             elif token == "^":
                 result = a ** b
+            elif token == "angle":
+                result = vector_angle(a, b)
 
             stack.push(result)
 
-        elif token in {"neg", "sqrt", "sin", "cos", "tan"}:
+        elif token in {"neg", "sqrt", "sin", "cos", "tan", "abs"}:
 
             if stack.size() < 1:
-                raise ValueError(f"Недостаточно операндов для унарной операции: {token}")
+                raise ValueError(f"Недостаточно операндов: {token}")
 
             a = stack.pop()
             result = None
 
             if token == "neg":
-                result = -a
+                result = vector_neg(a) if is_vector(a) else -a
             elif token == "sqrt":
-                if a < 0:
-                    raise ValueError("Квадратный корень из отрицательного числа")
                 result = math.sqrt(a)
             elif token == "sin":
                 result = math.sin(a)
@@ -139,23 +159,25 @@ def rpn_calculator(ex: str, vars: dict[str, float] = None):
                 result = math.cos(a)
             elif token == "tan":
                 result = math.tan(a)
-
+            elif token == "abs":
+                result = vector_abs(a) if is_vector(a) else abs(a)
             stack.push(result)
 
         else:
             try:
-                stack.push(float(token))
+                val = parse_vector(token)
+                stack.push(val)
             except ValueError:
-                if vars is not None and token in vars:
+                if token in vars:
                     stack.push(vars[token])
                 else:
-                    raise ValueError(f"\"{token}\" - неизвестная операция или не число")
+                    raise ValueError(f"\"{token}\" - неизвестный токен")
 
     if stack.size() != 1:
-        raise ValueError(f"Некорректный итоговый стек: {stack.data}")
+        raise ValueError(f"Некорректный стек: {stack.data}")
 
     result = stack.pop()
-    return int(result) if result.is_integer() else result
+    return int(result) if isinstance(result, float) and result.is_integer() else result
 
 
 def evaluate_program(lines: list[str]) -> dict[str, float]:
@@ -172,14 +194,14 @@ def evaluate_program(lines: list[str]) -> dict[str, float]:
             continue
 
         if '=' in line:
-            varname, expr = map(str.strip, line.split('=', 1))
+            varname, ex = map(str.strip, line.split('=', 1))
             if not varname.isidentifier():
                 raise ValueError(f"Недопустимое имя переменной: {varname}")
 
-            expr_rpn = parse_str_infix(expr) if is_infix(expr) else parse_str_postfix(expr)
-            env[varname] = rpn_calculator(expr_rpn, env)
+            ex_rpn = parse_str_infix(ex) if is_infix(ex) else parse_str_postfix(ex)
+            env[varname] = rpn_calculator(ex_rpn, env)
         else:
-            expr_rpn = parse_str_infix(line) if is_infix(line) else parse_str_postfix(line)
-            rpn_calculator(expr_rpn, env)
+            ex_rpn = parse_str_infix(line) if is_infix(line) else parse_str_postfix(line)
+            rpn_calculator(ex_rpn, env)
 
     return env

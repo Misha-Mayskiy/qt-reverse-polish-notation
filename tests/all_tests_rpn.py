@@ -1,5 +1,5 @@
 import unittest
-from math import isclose
+from math import isclose, pi, sqrt
 
 from main import rpn_calculator, parse_str_postfix, parse_str_infix, evaluate_program
 
@@ -409,6 +409,78 @@ class TestRPNAssignment(unittest.TestCase):
         result = evaluate_program(lines)
         self.assertEqual(result["x"], 4)
         self.assertEqual(result["y"], 8)
+
+
+class TestRPNVectorOperations(unittest.TestCase):
+
+    def test_vector_addition(self):
+        self.assertEqual(rpn_calculator("[1,2,3] [4,5,6] +"), [5, 7, 9])
+
+    def test_vector_subtraction(self):
+        self.assertEqual(rpn_calculator("[5,5,5] [2,1,0] -"), [3, 4, 5])
+
+    def test_scalar_multiplication(self):
+        self.assertEqual(rpn_calculator("[2,4] 3 *"), [6, 12])
+        self.assertEqual(rpn_calculator("3 [2,4] *"), [6, 12])
+
+    def test_vector_negation(self):
+        self.assertEqual(rpn_calculator("[1,-2,3] neg"), [-1, 2, -3])
+
+    def test_vector_abs(self):
+        result = rpn_calculator("[3,4] abs")
+        self.assertTrue(isclose(result, 5.0))
+
+    def test_angle_between_vectors(self):
+        result = rpn_calculator("[1,0] [0,1] angle")
+        self.assertTrue(isclose(result, pi / 2, abs_tol=1e-6))
+
+    def test_mixed_vector_scalar_operations(self):
+        with self.assertRaises(TypeError):
+            rpn_calculator("[1,2] 2 +")
+        with self.assertRaises(TypeError):
+            rpn_calculator("2 [1,2] +")
+        with self.assertRaises(TypeError):
+            rpn_calculator("[1,2] 3 -")
+        with self.assertRaises(TypeError):
+            rpn_calculator("3 [1,2] -")
+
+    def test_invalid_vector_length_for_add(self):
+        with self.assertRaises(ValueError):
+            rpn_calculator("[1,2] [1,2,3] +")
+
+    def test_vector_variable(self):
+        result = rpn_calculator("a neg", {"a": [1, 2, -1]})
+        self.assertEqual(result, [-1, -2, 1])
+
+
+class TestRPNMixedTypes(unittest.TestCase):
+
+    def test_scalar_then_vector_operations(self):
+        self.assertEqual(rpn_calculator("[1,2] neg"), [-1, -2])
+
+    def test_nested_stack_behavior(self):
+        with self.assertRaises(TypeError):
+            rpn_calculator("1 2 [1,2] +")
+
+    def test_vector_then_scalar_sequence(self):
+        result = rpn_calculator("[1,2,2] abs 3 +")
+        self.assertTrue(isclose(result, 6.0))
+
+    def test_angle_with_vectors_and_scalar_ops(self):
+        angle = rpn_calculator("[1,0] [0,1] angle 1 +")  # pi/2 + 1
+        self.assertTrue(isclose(angle, pi / 2 + 1, abs_tol=1e-6))
+
+    def test_combined_operations(self):
+        expr = "2 3 + [1,1] * abs"
+        result = rpn_calculator(expr)
+        self.assertTrue(isclose(result, sqrt(50), abs_tol=1e-6))
+
+    def test_chained_neg_abs(self):
+        result = rpn_calculator("[3,4] neg abs")
+        self.assertEqual(result, 5.0)
+
+    def test_vector_angle_with_self(self):
+        self.assertTrue(isclose(rpn_calculator("[1,2] [1,2] angle"), 0.0, abs_tol=1e-6))
 
 
 if __name__ == "__main__":
