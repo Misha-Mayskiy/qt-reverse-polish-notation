@@ -4,6 +4,11 @@ from .parser import parse_str_infix, is_infix, parse_str_postfix
 from .vectors import (parse_vector, vector_abs, is_vector, vector_neg, vector_angle,
                       vector_scalar_mul, vector_sub, vector_add)
 
+CONSTANTS = {
+    "pi": math.pi,
+    "e": math.e
+}
+
 
 class Stack:
     """ Реализация Stack для удобства """
@@ -75,7 +80,7 @@ def rpn_calculator(ex: str, variables: dict = None):
             stack.push(result)
 
         # Унарные операторы
-        elif token in {"neg", "sqrt", "sin", "cos", "tan", "abs"}:
+        elif token in {"neg", "sqrt", "sin", "cos", "tan", "abs", "log", "ln"}:
             if stack.size() < 1:
                 raise ValueError(f"Недостаточно операндов для функции: {token}")
             a = stack.pop()
@@ -95,6 +100,12 @@ def rpn_calculator(ex: str, variables: dict = None):
                 result = math.cos(a)
             elif token == "tan":
                 result = math.tan(a)
+            elif token == "log":
+                if a <= 0: raise ValueError("Логарифм от неположительного числа")
+                result = math.log10(a)
+            elif token == "ln":
+                if a <= 0: raise ValueError("Натуральный логарифм от неположительного числа")
+                result = math.log(a)
 
             stack.push(result)
 
@@ -113,6 +124,8 @@ def rpn_calculator(ex: str, variables: dict = None):
         raise ValueError(f"В конце вычислений в стеке осталось более одного элемента: {stack.data}")
 
     result = stack.pop()
+    if isinstance(result, float) and not result.is_integer():
+        return round(result, 10)
     if isinstance(result, float) and result.is_integer():
         return int(result)
     return result

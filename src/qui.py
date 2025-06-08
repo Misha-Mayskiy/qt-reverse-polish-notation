@@ -308,14 +308,17 @@ class CalculatorGUI(QMainWindow):
         """Обработка нажатия кнопки"""
         current = self.input_field.text()
 
-        if text == 'C':
+        if text == 'C' or text == '🗑️':
             self.clear_input()
         elif text == '⌫':
             self.input_field.setText(current[:-1])
         elif text == '=':
             self.calculate()
         elif text == 'π':
-            self.input_field.insert('pi')
+            if current and not current.endswith(' '):
+                self.input_field.insert(' pi')
+            else:
+                self.input_field.insert('pi')
         else:
             # Добавляем пробелы для операторов
             if text in ['+', '-', '*', '/', '^']:
